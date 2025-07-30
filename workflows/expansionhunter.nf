@@ -8,6 +8,8 @@ include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_expansionhunter_pipeline'
+include { EXPANSIONHUNTER as EXPANSIONHUNTER_MODULE  } from '../modules/nf-core/expansionhunter/main'
+include { STRANGER               } from '../modules/nf-core/stranger/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -21,8 +23,30 @@ workflow EXPANSIONHUNTER {
     ch_samplesheet // channel: samplesheet read in from --input
     main:
 
-    ch_versions = Channel.empty()
-    ch_multiqc_files = Channel.empty()
+    // Create empty the channels
+    ch_versions        = Channel.empty()
+    ch_multiqc_files   = Channel.empty()
+
+    // Create reference channels
+    ch_fasta           = Channel.fromPath(params.fasta).map { it -> [[id:it.simpleName], it] }.collect()
+    ch_fai             = Channel.fromPath(params.fai).map {it -> [[id:it.simpleName], it]}.collect()
+    ch_variant_catalog = Channel.fromPath(params.variant_catalog).map { it -> [[id:it.simpleName],it]}.collect()
+    ch_samplesheet.view()
+
+    EXPANSIONHUNTER_MODULE(
+        ch_samplesheet,
+        ch_fasta,
+        ch_fai,
+        ch_variant_catalog
+    )
+    ch_versions = ch_versions.mix(EXPANSIONHUNTER_MODULE.out.versions)
+
+    STRANGER(
+        EXPANSIONHUNTER_MODULE.out.vcf,
+        ch_variant_catalog
+    )
+    ch_versions = ch_versions.mix(STRANGER.out.versions)
+
 
     //
     // Collate and save software versions

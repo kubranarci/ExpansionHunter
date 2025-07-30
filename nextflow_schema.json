@@ -10,7 +10,7 @@
             "type": "object",
             "fa_icon": "fas fa-terminal",
             "description": "Define where the pipeline should find input data and save output data.",
-            "required": ["input", "outdir"],
+            "required": ["input", "outdir", "fasta", "fai", "variant_catalog"],
             "properties": {
                 "input": {
                     "type": "string",
@@ -28,6 +28,32 @@
                     "format": "directory-path",
                     "description": "The output directory where the results will be saved. You have to use absolute paths to storage on Cloud infrastructure.",
                     "fa_icon": "fas fa-folder-open"
+                },
+                "fai": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "file-path",
+                    "help_text": "If none provided, will be generated automatically from the FASTA reference",
+                    "description": "Path to FASTA genome index file.",
+                    "pattern": "^\\S+\\.fn?a(sta)?\\.fai$",
+                    "fa_icon": "fas fa-file"
+                },
+                "fasta": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "mimetype": "text/plain",
+                    "pattern": "^\\S+\\.fn?a(sta)?(\\.gz)?$",
+                    "description": "Path to FASTA genome file.",
+                    "fa_icon": "fas fa-file"
+                },
+                "variant_catalog": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "file-path",
+                    "description": "Path to variant catalog file",
+                    "help_text": "Should be Stranger's extended JSON as described at https://github.com/Clinical-Genomics/stranger/blob/master/stranger/resources/variant_catalog_grch37.json. This file is used by both ExpansionHunter and Stranger",
+                    "fa_icon": "fas fa-file"
                 },
                 "multiqc_title": {
                     "type": "string",
