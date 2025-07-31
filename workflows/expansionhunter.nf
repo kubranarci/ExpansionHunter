@@ -3,13 +3,18 @@
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-include { MULTIQC                } from '../modules/nf-core/multiqc/main'
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_expansionhunter_pipeline'
-include { EXPANSIONHUNTER as EXPANSIONHUNTER_MODULE  } from '../modules/nf-core/expansionhunter/main'
 include { STRANGER               } from '../modules/nf-core/stranger/main'
+include { TABIX_TABIX            } from '../modules/nf-core/tabix/tabix/main'
+include { BCFTOOLS_REHEADER      } from '../modules/nf-core/bcftools/reheader/main'
+include { PICARD_RENAMESAMPLEINVCF } from '../modules/nf-core/picard/renamesampleinvcf/main'
+include { BCFTOOLS_NORM          } from '../modules/nf-core/bcftools/norm/main'
+include { SVDB_MERGE             } from '../modules/nf-core/svdb/merge/main'
+include { MULTIQC                } from '../modules/nf-core/multiqc/main'
+include { EXPANSIONHUNTER as EXPANSIONHUNTER_MODULE  } from '../modules/nf-core/expansionhunter/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -31,8 +36,8 @@ workflow EXPANSIONHUNTER {
     ch_fasta           = Channel.fromPath(params.fasta).map { it -> [[id:it.simpleName], it] }.collect()
     ch_fai             = Channel.fromPath(params.fai).map {it -> [[id:it.simpleName], it]}.collect()
     ch_variant_catalog = Channel.fromPath(params.variant_catalog).map { it -> [[id:it.simpleName],it]}.collect()
-    ch_samplesheet.view()
 
+    // Run expansion hunter seperately
     EXPANSIONHUNTER_MODULE(
         ch_samplesheet,
         ch_fasta,
@@ -41,12 +46,51 @@ workflow EXPANSIONHUNTER {
     )
     ch_versions = ch_versions.mix(EXPANSIONHUNTER_MODULE.out.versions)
 
+    BCFTOOLS_REHEADER(
+        EXPANSIONHUNTER_MODULE.out.vcf.map{ meta, vcf -> [ meta, vcf, [], [] ]},
+        ch_fai
+    )
+    ch_versions = ch_versions.mix(BCFTOOLS_REHEADER.out.versions)
+
+    PICARD_RENAMESAMPLEINVCF(
+        BCFTOOLS_REHEADER.out.vcf
+    )
+    ch_versions = ch_versions.mix(PICARD_RENAMESAMPLEINVCF.out.versions)
+
+    TABIX_TABIX(
+        PICARD_RENAMESAMPLEINVCF.out.vcf
+    )
+    ch_versions = ch_versions.mix(TABIX_TABIX.out.versions)
+
+    // Split multi allelelic
+    BCFTOOLS_NORM (
+        PICARD_RENAMESAMPLEINVCF.out.vcf.join(TABIX_TABIX.out.tbi, failOnMismatch:true, failOnDuplicate:true),
+        ch_fasta
+    )
+    ch_versions = ch_versions.mix(BCFTOOLS_NORM.out.versions)
+
+    // Collect repeat expansions by caseid
+    BCFTOOLS_NORM.out.vcf.map{ meta, vcf ->
+            def newMeta = meta.clone()
+            newMeta.remove("sex")
+            newMeta.remove("phenotype")
+            newMeta.remove("id")
+            [newMeta + [id : newMeta.case_id ], vcf]
+    }.groupTuple()
+    .set{ch_collected_vcf}
+
+    SVDB_MERGE (
+        ch_collected_vcf,
+        [],
+        true
+        )
+    ch_versions = ch_versions.mix(SVDB_MERGE.out.versions)
+
     STRANGER(
-        EXPANSIONHUNTER_MODULE.out.vcf,
+        SVDB_MERGE.out.vcf,
         ch_variant_catalog
     )
     ch_versions = ch_versions.mix(STRANGER.out.versions)
-
 
     //
     // Collate and save software versions

@@ -1,0 +1,6 @@
+sample,bam,bai,sex,phenotype,case_id
+earlycasualcaiman,https://raw.githubusercontent.com/nf-core/test-datasets/raredisease/testdata/earlycasualcaiman_sorted_md.bam,https://raw.githubusercontent.com/nf-core/test-datasets/raredisease/testdata/earlycasualcaiman_sorted_md.bam.bai,1,father,triocase
+slowlycivilbuck,https://raw.githubusercontent.com/nf-core/test-datasets/raredisease/testdata/slowlycivilbuck_sorted_md.bam,https://raw.githubusercontent.com/nf-core/test-datasets/raredisease/testdata/slowlycivilbuck_sorted_md.bam.bai,2,mother,triocase
+hugelymodelbat,https://raw.githubusercontent.com/nf-core/test-datasets/raredisease/testdata/hugelymodelbat_sorted_md.bam,https://raw.githubusercontent.com/nf-core/test-datasets/raredisease/testdata/hugelymodelbat_sorted_md.bam.bai,1,child,triocase
+slowlycivilbuck0,https://raw.githubusercontent.com/nf-core/test-datasets/raredisease/testdata/slowlycivilbuck_sorted_md.bam,https://raw.githubusercontent.com/nf-core/test-datasets/raredisease/testdata/slowlycivilbuck_sorted_md.bam.bai,1,control,cancercase
+slowlycivilbuck1,https://raw.githubusercontent.com/nf-core/test-datasets/raredisease/testdata/hugelymodelbat_sorted_md.bam,https://raw.githubusercontent.com/nf-core/test-datasets/raredisease/testdata/hugelymodelbat_sorted_md.bam.bai,1,tumor,cancercase
