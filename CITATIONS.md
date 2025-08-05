@@ -1,8 +1,5 @@
 # odcf/expansionhunter: Citations
 
-## [nf-core](https://pubmed.ncbi.nlm.nih.gov/32055031/)
-
-> Ewels PA, Peltzer A, Fillinger S, Patel H, Alneberg J, Wilm A, Garcia MU, Di Tommaso P, Nahnsen S. The nf-core framework for community-curated bioinformatics pipelines. Nat Biotechnol. 2020 Mar;38(3):276-278. doi: 10.1038/s41587-020-0439-x. PubMed PMID: 32055031.
 
 ## [Nextflow](https://pubmed.ncbi.nlm.nih.gov/28398311/)
 
@@ -15,10 +12,6 @@
 > Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016 Oct 1;32(19):3047-8. doi: 10.1093/bioinformatics/btw354. Epub 2016 Jun 16. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.
 
 ## Software packaging/containerisation tools
-
-- [Anaconda](https://anaconda.com)
-
-  > Anaconda Software Distribution. Computer software. Vers. 2-2.4.0. Anaconda, Nov. 2016. Web.
 
 - [Bioconda](https://pubmed.ncbi.nlm.nih.gov/29967506/)
 
