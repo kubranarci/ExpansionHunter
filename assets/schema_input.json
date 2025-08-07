@@ -35,12 +35,12 @@
                     }
                 ],
                 "meta": ["sex"],
-                "errorMessage": "Sex must be provided, has to be one of this values: '0, 1, 2, other' and cannot contain spaces"
+                "errorMessage": "Sex must be provided, has to be one of this values: '0: unknown, 1: male, 2: female' and cannot contain spaces"
             },
             "phenotype": {
                 "type": "string",
                 "meta": ["phenotype"],
-                "enum": ["mother", "father", "child", "tumor", "control"],
+                "enum": ["mother", "father", "child", "tumor", "control", "single"],
                 "errorMessage": "Phenotype must be provided and cannot contain spaces"
             },
             "case_id": {

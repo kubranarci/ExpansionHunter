@@ -7,6 +7,8 @@ include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_expansionhunter_pipeline'
+include { SAMTOOLS_IDXSTATS      } from '../modules/nf-core/samtools/idxstats/main'
+include { DETERMINE_SEX          } from '../modules/local/determine_sex/main'
 include { STRANGER               } from '../modules/nf-core/stranger/main'
 include { TABIX_TABIX            } from '../modules/nf-core/tabix/tabix/main'
 include { BCFTOOLS_REHEADER      } from '../modules/nf-core/bcftools/reheader/main'
@@ -37,17 +39,54 @@ workflow EXPANSIONHUNTER {
     ch_fai             = Channel.fromPath(params.fai).map {it -> [[id:it.simpleName], it]}.collect()
     ch_variant_catalog = Channel.fromPath(params.variant_catalog).map { it -> [[id:it.simpleName],it]}.collect()
 
+    // Branch out samples without sex given
+    ch_samplesheet.branch { meta, _bam, _bai ->
+            unknown: meta.sex in [0]
+            known: meta.sex in [1,2]
+        }
+        .set { samplesheet_ch }
+
+    // Determine sex if not given
+    SAMTOOLS_IDXSTATS(
+        samplesheet_ch.unknown
+    )
+    ch_versions = ch_versions.mix(SAMTOOLS_IDXSTATS.out.versions)
+
+    DETERMINE_SEX(
+       SAMTOOLS_IDXSTATS.out.idxstats
+    )
+    ch_versions = ch_versions.mix(DETERMINE_SEX.out.versions)
+
+    samplesheet_ch.unknown
+        .join(DETERMINE_SEX.out.output)
+        .map{ meta, bam, bai, sex ->
+            def newMeta = meta.clone()
+            newMeta.remove('sex')
+            [newMeta + [sex: sex], bam, bai]
+        }
+        .set { samplesheet_ch_sex }
+
+    samplesheet_ch_sex.mix(samplesheet_ch.known)
+
     // Run expansion hunter seperately
     EXPANSIONHUNTER_MODULE(
-        ch_samplesheet,
+        samplesheet_ch_sex.mix(samplesheet_ch.known),
         ch_fasta,
         ch_fai,
         ch_variant_catalog
     )
     ch_versions = ch_versions.mix(EXPANSIONHUNTER_MODULE.out.versions)
 
+    // If Phenotype is single, skip normalization and merging
+    EXPANSIONHUNTER_MODULE.out.vcf.branch { meta, _vcf ->
+            single: meta.phenotype in ["single"]
+            others: true
+        }
+        .set { vcf_ch }
+
+    // Fix header and rename samples with sample id
     BCFTOOLS_REHEADER(
-        EXPANSIONHUNTER_MODULE.out.vcf.map{ meta, vcf -> [ meta, vcf, [], [] ]},
+        vcf_ch.others.map{ meta, vcf -> [ meta, vcf, [], [] ]},
         ch_fai
     )
     ch_versions = ch_versions.mix(BCFTOOLS_REHEADER.out.versions)
@@ -79,6 +118,7 @@ workflow EXPANSIONHUNTER {
     }.groupTuple()
     .set{ch_collected_vcf}
 
+    // Merge files per case
     SVDB_MERGE (
         ch_collected_vcf,
         [],
@@ -86,8 +126,9 @@ workflow EXPANSIONHUNTER {
         )
     ch_versions = ch_versions.mix(SVDB_MERGE.out.versions)
 
+    // Annotate using stranger
     STRANGER(
-        SVDB_MERGE.out.vcf,
+        SVDB_MERGE.out.vcf.mix(vcf_ch.single),
         ch_variant_catalog
     )
     ch_versions = ch_versions.mix(STRANGER.out.versions)
