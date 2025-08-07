@@ -17,6 +17,8 @@ include { BCFTOOLS_NORM          } from '../modules/nf-core/bcftools/norm/main'
 include { SVDB_MERGE             } from '../modules/nf-core/svdb/merge/main'
 include { MULTIQC                } from '../modules/nf-core/multiqc/main'
 include { EXPANSIONHUNTER as EXPANSIONHUNTER_MODULE  } from '../modules/nf-core/expansionhunter/main'
+include { SEXDETERRMINE } from '../modules/nf-core/sexdeterrmine/main'
+include { SAMTOOLS_DEPTH } from '../modules/nf-core/samtools/depth/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -52,10 +54,25 @@ workflow EXPANSIONHUNTER {
     )
     ch_versions = ch_versions.mix(SAMTOOLS_IDXSTATS.out.versions)
 
+
     DETERMINE_SEX(
        SAMTOOLS_IDXSTATS.out.idxstats
     )
     ch_versions = ch_versions.mix(DETERMINE_SEX.out.versions)
+
+////
+
+    SAMTOOLS_DEPTH(
+        ch_samplesheet,
+        [[],[]]
+    )
+
+    SEXDETERRMINE(
+        SAMTOOLS_DEPTH.out.tsv,
+        []
+    )
+
+////
 
     samplesheet_ch.unknown
         .join(DETERMINE_SEX.out.output)
