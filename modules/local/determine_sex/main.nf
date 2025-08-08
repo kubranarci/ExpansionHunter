@@ -4,14 +4,15 @@ process DETERMINE_SEX {
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/ab/ab3b0054e3111812d8f2deb12345d5b7ca7ea7b18a2dbcbf174d46274c28deba/data':
-        'community.wave.seqera.io/library/pip_pandas:40d2e76c16c136f0' }"
+        'https://depot.galaxyproject.org/singularity/samtools:1.21--h50ea8bc_0' :
+        'biocontainers/samtools:1.21--h50ea8bc_0' }"
 
     input:
     tuple val(meta), path(input)
 
     output:
     tuple val(meta), env(sex)   , emit: output
+    path "*tsv"                 , emit: tsv
     path "versions.yml"         , emit: versions
 
     when:
@@ -19,7 +20,7 @@ process DETERMINE_SEX {
 
     script:
     """
-    sex=`determine_sex.py $input`
+    sex=`determine_sex.py --sample $meta.id  --bam_path $input --out_dir .`
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

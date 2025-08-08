@@ -47,13 +47,13 @@ workflow EXPANSIONHUNTER {
         .set { samplesheet_ch }
 
     // Determine sex if not given
-    SAMTOOLS_IDXSTATS(
-        samplesheet_ch.unknown
-    )
-    ch_versions = ch_versions.mix(SAMTOOLS_IDXSTATS.out.versions)
+    //SAMTOOLS_IDXSTATS(
+    //    samplesheet_ch.unknown
+    //)
+    //ch_versions = ch_versions.mix(SAMTOOLS_IDXSTATS.out.versions)
 
     DETERMINE_SEX(
-       SAMTOOLS_IDXSTATS.out.idxstats
+       samplesheet_ch.unknown
     )
     ch_versions = ch_versions.mix(DETERMINE_SEX.out.versions)
 
