@@ -7,9 +7,31 @@
 
 ## Pipeline tools
 
+- [BCFtools](https://academic.oup.com/gigascience/article/10/2/giab008/6137722) & [SAMtools](https://academic.oup.com/bioinformatics/article/25/16/2078/204688)
+
+  > Danecek P, Bonfield JK, Liddle J, et al. Twelve years of SAMtools and BCFtools. GigaScience. 2021;10(2):giab008. doi:10.1093/gigascience/giab008
+
+- [ExpansionHunter](https://academic.oup.com/bioinformatics/article/doi/10.1093/bioinformatics/btz431/5499079)
+
+  > Dolzhenko E, Deshpande V, Schlesinger F, et al. ExpansionHunter: a sequence-graph-based tool to analyze variation in short tandem repeat regions. Birol I, ed. Bioinformatics. 2019;35(22):4754-4756. doi:10.1093/bioinformatics/btz431
+
 - [MultiQC](https://pubmed.ncbi.nlm.nih.gov/27312411/)
 
-> Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016 Oct 1;32(19):3047-8. doi: 10.1093/bioinformatics/btw354. Epub 2016 Jun 16. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.
+  > Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016 Oct 1;32(19):3047-8. doi: 10.1093/bioinformatics/btw354. Epub 2016 Jun 16. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.
+
+- [Picard](https://broadinstitute.github.io/picard/)
+
+- [stranger](https://github.com/Clinical-Genomics/stranger)
+
+  > Nilsson D, Magnusson M. moonso/stranger v0.7.1. Published online February 18, 2021. doi:10.5281/ZENODO.4548873
+
+- [svdb](https://github.com/J35P312/SVDB)
+
+  > Eisfeldt J, Vezzi F, Olason P, Nilsson D, Lindstrand A. TIDDIT, an efficient and comprehensive structural variant caller for massive parallel sequencing data. F1000Res. 2017;6:664. doi:10.12688/f1000research.11168.2
+
+- [Tabix](https://academic.oup.com/bioinformatics/article/27/5/718/262743)
+
+  > Li H. Tabix: fast retrieval of sequence features from generic TAB-delimited files. Bioinformatics. 2011;27(5):718-719. doi:10.1093/bioinformatics/btq671
 
 ## Software packaging/containerisation tools
 

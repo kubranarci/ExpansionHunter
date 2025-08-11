@@ -11,68 +11,114 @@
 
 ## Introduction
 
-**odcf/expansionhunter** is a bioinformatics pipeline that ...
+**odcf/expansionhunter** is a bioinformatics pipeline to analyse Short Tandem Repeats (STRs) using a combination of Expansion Hunter, samtools, and STRANGER. It is designed to be flexible, supporting various analysis types including single-sample, trio, and somatic cases, and includes an automated sex determination step.
 
-<!-- TODO nf-core:
-   Complete this sentence with a 2-3 sentence summary of what types of data the pipeline ingests, a brief overview of the
-   major pipeline sections and the types of output it produces. You're giving an overview to someone new
-   to nf-core here, in 15-20 seconds. For an example, see https://github.com/nf-core/rnaseq/blob/master/README.md#introduction
--->
+It is designed to be flexible, supporting various analysis types including single-sample, trio, and somatic cases, and includes an automated sex determination step.
 
-<!-- TODO nf-core: Include a figure that guides the user through the major workflow steps. Many nf-core
-     workflows use the "tube map" design for that. See https://nf-co.re/docs/guidelines/graphic_design/workflow_diagrams#examples for examples.   -->
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+
+### Pipeline Description
+
+The pipeline's core logic adapts to your input, following these key steps:
+
+1. **Sex Determination:** If the sex of a sample is not provided, the pipeline will automatically run the determine_sex.py script. This script analyzes the ratio of reads on chromosomes 19, X, and Y to predict the sample's sex.
+
+2. **Expansion Hunter:** The pipeline runs the Expansion Hunter tool to analyze each sample's BAM file and identify STR expansions.
+
+3. **Sample Merging (Conditional):** Uses SVDB merge tool. 
+
+   - Trio Analysis: If you provide three samples (child, father, mother), the pipeline will merge the Expansion Hunter VCF files into a single output.
+
+   - Somatic Analysis: For tumor/control sample pairs, the pipeline merges the respective VCF files.
+   
+   - Single Sample: For a single sample, this merging step is skipped.
+
+4. **STRANGER Analysis:** The final step runs STRANGER on the merged or single-sample VCF files.
+
+5. **MultiQC:** Produces final QC reports as well as the versionings of the tools used in this pipeline. 
 
 ## Usage
 
 > [!NOTE]
 > If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/usage/installation) on how to set-up Nextflow. Make sure to [test your setup](https://nf-co.re/docs/usage/introduction#how-to-run-a-pipeline) with `-profile test` before running the workflow on actual data.
 
-<!-- TODO nf-core: Describe the minimum required steps to execute the pipeline, e.g. how to prepare samplesheets.
-     Explain what rows and columns represent. For instance (please edit as appropriate):
+1. Download the pipeline and test it on a minimal dataset with a single command:
 
-First, prepare a samplesheet with your input data that looks as follows:
+```bash
+git clone https://github.com/kubranarci/ExpansionHunter.git
+```
+
+Make the bin directory executable:
+
+```bash
+chmod +x bin/*
+```
+
+2. Set up samplesheet.csv
+
+A samplesheet has to have following columns
+
+**sample:** The sample name, will be used to create final reports and rename vcf files. 
+
+**bam:** BAM file path to the sample
+
+**bai:** Index of bam file. 
+
+**sex:** Gender of the sample. 2 for female, 1 for male, 0 if unknown.
+
+**case_id:** Case if will be used for trio or somatic analysis to merge and name case samples. 
+
+**phenotype:** Describes the phenotype of the analysis. 
+
+   - **Trio:** father, mather or child
+
+   - **Somatic:** tumor or control
+
+   - **Single:** single
+
 
 `samplesheet.csv`:
 
 ```csv
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
+sample,bam,bai,sex,case_id,phenotype
+triofather,triofather.bam,triofather.bam.bai,1,father,triocase
+triomother,triomother.bam,triomother.bam.bai,2,mother,triocase
+triochild,triochild.bam,triochild.bam.bai,1,child,triocase
+somaticcontrol,somaticcontrol.bam,somaticcontrol.bam.bai,0,control,somaticcase
+somatictumor,somatictumor.bam,somatictumor.bam.bai,0,tumor,somaticcasecase
+test,test.bam,test.bam.bai,0,single,singlecase
 ```
 
-Each row represents a fastq file (single-end) or a pair of fastq files (paired end).
+Check out /assets/samplesheet.csv for an example sample sheet file. 
 
--->
+3. Prepare reference data
 
-Now, you can run the pipeline using:
+This pipelines needs a fasta reference with fai index and variant catalog file to run Expansion Hunter and Stranger.
 
-<!-- TODO nf-core: update the following command to include all required parameters for a minimal example -->
+- **fasta:** Path to the FASTA reference
+- **fai:** Path to FAI of FASTA file
+- **variant_catalog:** Path to the variant catalog, GRCh37 and GRCh38 versions from STRANGER can be find in assets/. For more, check https://github.com/Clinical-Genomics/stranger/tree/master/stranger/resources 
+
+4. Now, you can run the pipeline using:
+
 
 ```bash
 nextflow run odcf/expansionhunter \
    -profile <docker/singularity/.../institute> \
    --input samplesheet.csv \
+   --fasta reference.fa \
+   --fai reference.fai \
+   --variant_catalog variant_catalog.json \
    --outdir <OUTDIR>
 ```
-
-> [!WARNING]
-> Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).
 
 ## Credits
 
 odcf/expansionhunter was originally written by @kubranarci.
-
-We thank the following people for their extensive assistance in the development of this pipeline:
-
-<!-- TODO nf-core: If applicable, make list of people who have also contributed -->
 
 ## Contributions and Support
 
 If you would like to contribute to this pipeline, please see the [contributing guidelines](.github/CONTRIBUTING.md).
 
 ## Citations
-
-<!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi and badge at the top of this file. -->
-<!-- If you use odcf/expansionhunter for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX) -->
 
 An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.

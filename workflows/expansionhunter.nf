@@ -7,7 +7,6 @@ include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_expansionhunter_pipeline'
-include { SAMTOOLS_IDXSTATS      } from '../modules/nf-core/samtools/idxstats/main'
 include { DETERMINE_SEX          } from '../modules/local/determine_sex/main'
 include { STRANGER               } from '../modules/nf-core/stranger/main'
 include { TABIX_TABIX            } from '../modules/nf-core/tabix/tabix/main'
@@ -46,14 +45,9 @@ workflow EXPANSIONHUNTER {
         }
         .set { samplesheet_ch }
 
-    // Determine sex if not given
-    //SAMTOOLS_IDXSTATS(
-    //    samplesheet_ch.unknown
-    //)
-    //ch_versions = ch_versions.mix(SAMTOOLS_IDXSTATS.out.versions)
-
+    // Predict sex of the samples if not given
     DETERMINE_SEX(
-       samplesheet_ch.unknown
+        samplesheet_ch.unknown
     )
     ch_versions = ch_versions.mix(DETERMINE_SEX.out.versions)
 
@@ -68,7 +62,7 @@ workflow EXPANSIONHUNTER {
 
     samplesheet_ch_sex.mix(samplesheet_ch.known)
 
-    // Run expansion hunter seperately
+    // Run expansion hunter for each sample
     EXPANSIONHUNTER_MODULE(
         samplesheet_ch_sex.mix(samplesheet_ch.known),
         ch_fasta,
@@ -84,13 +78,14 @@ workflow EXPANSIONHUNTER {
         }
         .set { vcf_ch }
 
-    // Fix header and rename samples with sample id
+    // Fix header 
     BCFTOOLS_REHEADER(
         vcf_ch.others.map{ meta, vcf -> [ meta, vcf, [], [] ]},
         ch_fai
     )
     ch_versions = ch_versions.mix(BCFTOOLS_REHEADER.out.versions)
 
+    // Rename sample in VCF using Picard
     PICARD_RENAMESAMPLEINVCF(
         BCFTOOLS_REHEADER.out.vcf
     )
@@ -101,14 +96,14 @@ workflow EXPANSIONHUNTER {
     )
     ch_versions = ch_versions.mix(TABIX_TABIX.out.versions)
 
-    // Split multi allelelic
+    // Split multi allelelic variants
     BCFTOOLS_NORM (
         PICARD_RENAMESAMPLEINVCF.out.vcf.join(TABIX_TABIX.out.tbi, failOnMismatch:true, failOnDuplicate:true),
         ch_fasta
     )
     ch_versions = ch_versions.mix(BCFTOOLS_NORM.out.versions)
 
-    // Collect repeat expansions by caseid
+    // Collect repeat expansions by case_id
     BCFTOOLS_NORM.out.vcf.map{ meta, vcf ->
             def newMeta = meta.clone()
             newMeta.remove("sex")

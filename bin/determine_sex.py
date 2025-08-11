@@ -1,89 +1,163 @@
+#!/usr/bin/env python
+#
+# This script determines sex from a BAM file by calculating the ratio of reads mapped to
+# chromosomes 19, X, and Y using samtools.
+#
+
 import argparse
 import subprocess
 import os
+import sys
 
-class ReadsMapped:
-    def __init__(self, bam_path, chr, bam_subset_path, bam_stats):
-        self.bam_path = bam_path
-        self.chr = chr
-        self.bam_subset_path = bam_subset_path
-        self.bam_stats = bam_stats
-
-    def subset_bam_by_chr(self):
-        command_line = "samtools view -b {bam} {chr} > {bam_subset}".format(
-            bam=self.bam_path, chr=self.chr, bam_subset=self.bam_subset_path)
-        subprocess.check_output(command_line, shell=True)
-
-    def compute_bam_stats(self):
-        command_line = "samtools stats {bam_subset} | grep ^SN | cut -f 2- > {bam_stats}".format(
-            bam_subset=self.bam_subset_path, bam_stats=self.bam_stats
+def get_bam_chromosomes(bam_path):
+    """
+    Retrieves a list of chromosome names from the BAM file header.
+    Returns: a list of chromosome names (strings)
+    """
+    try:
+        header_output = subprocess.check_output(
+            f"samtools view -H {bam_path} | grep ^@SQ | cut -f 2-",
+            shell=True,
+            text=True
         )
-        subprocess.check_output(command_line, shell=True)
+        chrom_names = [line.split('\t')[0].replace('SN:', '') for line in header_output.strip().split('\n')]
+        return chrom_names
+    except subprocess.CalledProcessError as e:
+        print(f"Error reading BAM header: {e.stderr}", file=sys.stderr)
+        sys.exit(1)
 
-    def return_reads_mapped(self):
-        with open(self.bam_stats, "r") as f:
+def get_reads_mapped_count(bam_path, chrom_name, output_dir, sample_name):
+    """
+    Subsets a BAM file by chromosome, computes stats, and returns the number of
+    mapped reads, all in a single pipelined command.
+    """
+    # Create a temporary stats file
+    bam_stat_path = os.path.join(output_dir, f"{sample_name}_{chrom_name}_bam_stat.txt")
+    
+    try:
+        # Use a single command to pipe samtools view output to samtools stats
+        command_line = f"samtools view -b {bam_path} {chrom_name} | samtools stats - | grep ^SN | cut -f 2- > {bam_stat_path}"
+        subprocess.check_output(command_line, shell=True)
+        
+        # Read the stats file to get the mapped reads count
+        with open(bam_stat_path, "r") as f:
             for line in f:
                 if line.startswith("reads mapped and paired"):
                     return line.rstrip("\n").split("\t")[1]
+    except subprocess.CalledProcessError as e:
+        print(f"Warning: Samtools command failed for chromosome {chrom_name}: {e.stderr}", file=sys.stderr)
+        return "0"
+    except FileNotFoundError:
+        print(f"Error: `samtools` command not found. Please ensure it is in your PATH.", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        # Clean up the temporary stats file
+        try:
+            os.remove(bam_stat_path)
+        except OSError:
+            pass # File might not exist if the command failed
+
+    return "0"
 
 def classify_sex(X_19_ratio, Y_19_ratio, Y_X_ratio):
     """
-    This function roughly classifies sex based on reads mapped ratio between X and 19, Y and 19, and Y and X
-    :param X_19_ratio:
-    :param Y_19_ratio:
-    :param Y_X_ratio:
-    :return: either "male" or "female"
+    This function classifies sex based on the ratios of mapped reads.
+    :param X_19_ratio: Ratio of X chromosome reads to chromosome 19 reads.
+    :param Y_19_ratio: Ratio of Y chromosome reads to chromosome 19 reads.
+    :param Y_X_ratio: Ratio of Y chromosome reads to X chromosome reads.
+    :return: "2" (female) or "1" (male).
     """
+    # These thresholds are a simple heuristic. A more rigorous approach
+    # would involve a statistical model based on a known cohort.
     if X_19_ratio >= 0.5 and Y_19_ratio <= 0.01 and Y_X_ratio <= 0.01:
-        print(2)
-        return "probable_XX"
+        return "2"
     else:
-        print(1)
-        return "probable_XY"
+        return "1"
 
 def main(args):
+    """
+    Main function to run the sex classification pipeline.
+    """
+    # Create the output directory if it doesn't exist.
+    os.makedirs(args.out_dir, exist_ok=True)
+    
+    # Check for BAM index.
+    bai_path = args.bam_path + ".bai"
+    if not os.path.exists(bai_path):
+        print(f"Error: BAM index not found for {args.bam_path}. Please provide a .bai file.", file=sys.stderr)
+        sys.exit(1)
 
-    # Check if output directory exists
-    if os.path.isdir(args.out_dir) == False:
-        os.mkdir(args.out_dir)
-    if os.path.isdir(os.path.join(args.out_dir, args.sample)) == False:
-        os.mkdir(os.path.join(args.out_dir, args.sample))
+    # Get chromosome names from the BAM header to ensure compatibility.
+    bam_chromosomes = get_bam_chromosomes(args.bam_path)
 
-    outfile = open(os.path.join(args.out_dir, args.sample, args.sample + "_summary.tsv"), "w")
-    # Initilize the header
-    header = ["sample", "chr19", "chrX", "chrY", "X/19", "Y/19", "Y/X", "sex_prediction"]
-    print("\t".join(header), file=outfile)
+    # This dictionary maps a standard chromosome name to the actual name found in the BAM header.
+    # It dynamically finds the correct name for chr19, chrX, and chrY.
+    chr_map = {}
+    for standard_name in ["19", "X", "Y"]:
+        found_name = next(
+            (
+                chrom_name
+                for chrom_name in bam_chromosomes
+                if chrom_name == standard_name or chrom_name == f"chr{standard_name}"
+            ),
+            None,
+        )
+        if found_name:
+            chr_map[standard_name] = found_name
+        else:
+            print(f"Warning: Could not find a match for chromosome {standard_name}. Assigning 0 reads.", file=sys.stderr)
+            chr_map[standard_name] = None
+    
+    # Initialize output file and write header.
+    outfile_path = os.path.join(args.out_dir, args.sample + "_summary.tsv")
+    with open(outfile_path, "w") as outfile:
+        header = ["sample", "chr19", "chrX", "chrY", "X/19", "Y/19", "Y/X", "sex_prediction"]
+        print("\t".join(header), file=outfile)
 
-    # Initilize the output row
-    out = [args.sample]
+        # Dictionary to store read counts for each chromosome
+        reads_mapped_counts = {}
+        
+        # Iterate over the chromosomes and get read counts
+        for chrom_base in ["19", "X", "Y"]:
+            chrom_name = chr_map[chrom_base]
+            
+            if chrom_name is None:
+                reads_mapped_counts[chrom_base] = "0"
+                continue
 
-    chr = ["chr19", "chrX", "chrY"]
-    for i in chr:
-        bam_subset_path = os.path.join(args.out_dir, args.sample, i + "_bam_subset.bam")
-        bam_stat = os.path.join(args.out_dir, args.sample, i + "_bam_stat.txt")
-        reads_mapped = ReadsMapped(args.bam_path, i, bam_subset_path, bam_stat)
-        reads_mapped.subset_bam_by_chr()
-        reads_mapped.compute_bam_stats()
-        out.append(reads_mapped.return_reads_mapped())
+            mapped_reads = get_reads_mapped_count(
+                args.bam_path, chrom_name, args.out_dir, args.sample
+            )
+            reads_mapped_counts[chrom_base] = mapped_reads
 
-        # remove intermediate files (bam subsetted)
-        os.remove(os.path.join(args.out_dir, args.sample, i + "_bam_subset.bam"))
+        # Prepare the output line
+        out = [args.sample]
+        out.append(reads_mapped_counts["19"])
+        out.append(reads_mapped_counts["X"])
+        out.append(reads_mapped_counts["Y"])
 
-    X_19_ratio = float(out[2])/float(out[1])
-    Y_19_ratio = float(out[3])/float(out[1])
-    Y_X_ratio = float(out[3])/float(out[2])
+        # Calculate ratios and classify sex
+        # Handle division by zero for chr19 or chrX reads being 0
+        chr19_reads = float(reads_mapped_counts["19"])
+        chrX_reads = float(reads_mapped_counts["X"])
+        chrY_reads = float(reads_mapped_counts["Y"])
 
-    out.extend([str(X_19_ratio), str(Y_19_ratio), str(Y_X_ratio), classify_sex(X_19_ratio, Y_19_ratio, Y_X_ratio)])
-    print("\t".join(out), file=outfile)
+        X_19_ratio = chrX_reads / chr19_reads if chr19_reads > 0 else 0
+        Y_19_ratio = chrY_reads / chr19_reads if chr19_reads > 0 else 0
+        Y_X_ratio = chrY_reads / chrX_reads if chrX_reads > 0 else 0
+        
+        sex_prediction = classify_sex(X_19_ratio, Y_19_ratio, Y_X_ratio)
+
+        # Append ratios and prediction to the output line
+        out.extend([f"{X_19_ratio:.4f}", f"{Y_19_ratio:.4f}", f"{Y_X_ratio:.4f}", sex_prediction])
+        print("\t".join(out), file=outfile)
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="")
-    parser.add_argument("--sample", required=True, help="Input the sample name. The sample name is used to create a directory to store outputs")
-    parser.add_argument("--bam_path", required=True, help="Input the path to the bam file")
-    parser.add_argument("--out_dir", required=True, help="Input the path to where all the results should be stored.")
-
+    parser = argparse.ArgumentParser(description="Classifies sex from a BAM file using read ratios on chr19, X, and Y.")
+    parser.add_argument("--sample", required=True, help="Input the sample name. This is used to name output files.")
+    parser.add_argument("--bam_path", required=True, help="Input the path to the BAM file.")
+    parser.add_argument("--out_dir", default=os.getcwd(), help="Input the path to where all the results should be stored. Defaults to the current working directory.")
     return parser.parse_args()
-
 
 if __name__ == "__main__":
     main(parse_args())
