@@ -20,7 +20,7 @@ It is designed to be flexible, supporting various analysis types including singl
 
 The pipeline's core logic adapts to your input, following these key steps:
 
-1. **Sex Determination:** If the sex of a sample is not provided, the pipeline will automatically run the determine_sex.py script. This script analyzes the ratio of reads on chromosomes 19, X, and Y to predict the sample's sex.
+1. **Sex Determination:** If the sex of a sample is not provided, the pipeline will automatically run the ngs-bits/samplegender tool. This script analyzes the ratio of reads on chromosomes 19, X, and Y to predict the sample's sex.
 
 2. **Expansion Hunter:** The pipeline runs the Expansion Hunter tool to analyze each sample's BAM file and identify STR expansions.
 
@@ -47,12 +47,6 @@ The pipeline's core logic adapts to your input, following these key steps:
 git clone https://github.com/kubranarci/ExpansionHunter.git
 ```
 
-Make the bin directory executable:
-
-```bash
-chmod +x bin/*
-```
-
 2. Set up samplesheet.csv
 
 A samplesheet has to have following columns
@@ -63,7 +57,7 @@ A samplesheet has to have following columns
 
 **bai:** Index of bam file. 
 
-**sex:** Gender of the sample. 2 for female, 1 for male, 0 if unknown.
+**sex:** Gender of the sample. Can be female, male, or unknown.
 
 **case_id:** Case if will be used for trio or somatic analysis to merge and name case samples. 
 
@@ -80,12 +74,12 @@ A samplesheet has to have following columns
 
 ```csv
 sample,bam,bai,sex,case_id,phenotype
-triofather,triofather.bam,triofather.bam.bai,1,father,triocase
-triomother,triomother.bam,triomother.bam.bai,2,mother,triocase
-triochild,triochild.bam,triochild.bam.bai,1,child,triocase
-somaticcontrol,somaticcontrol.bam,somaticcontrol.bam.bai,0,control,somaticcase
-somatictumor,somatictumor.bam,somatictumor.bam.bai,0,tumor,somaticcasecase
-test,test.bam,test.bam.bai,0,single,singlecase
+triofather,triofather.bam,triofather.bam.bai,male,father,triocase
+triomother,triomother.bam,triomother.bam.bai,female,mother,triocase
+triochild,triochild.bam,triochild.bam.bai,male,child,triocase
+somaticcontrol,somaticcontrol.bam,somaticcontrol.bam.bai,unknown,control,somaticcase
+somatictumor,somatictumor.bam,somatictumor.bam.bai,unknown,tumor,somaticcasecase
+test,test.bam,test.bam.bai,unknown,single,singlecase
 ```
 
 Check out /assets/samplesheet.csv for an example sample sheet file. 
@@ -114,6 +108,8 @@ nextflow run odcf/expansionhunter \
 ## Credits
 
 odcf/expansionhunter was originally written by @kubranarci.
+
+This pipeline was inspired from repeat analysis subworkflow of nf-core/rarediseases pipeline. 
 
 ## Contributions and Support
 

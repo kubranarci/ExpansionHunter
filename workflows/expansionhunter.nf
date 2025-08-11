@@ -7,7 +7,7 @@ include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_expansionhunter_pipeline'
-include { DETERMINE_SEX          } from '../modules/local/determine_sex/main'
+include { NGSBITS_SAMPLEGENDER   } from '../modules/local/ngsbits_samplegender/main'
 include { STRANGER               } from '../modules/nf-core/stranger/main'
 include { TABIX_TABIX            } from '../modules/nf-core/tabix/tabix/main'
 include { BCFTOOLS_REHEADER      } from '../modules/nf-core/bcftools/reheader/main'
@@ -40,19 +40,22 @@ workflow EXPANSIONHUNTER {
 
     // Branch out samples without sex given
     ch_samplesheet.branch { meta, _bam, _bai ->
-            unknown: meta.sex in [0]
-            known: meta.sex in [1,2]
+            unknown: meta.sex in ["unknown"]
+            known: meta.sex in ["male", "female"]
         }
         .set { samplesheet_ch }
 
     // Predict sex of the samples if not given
-    DETERMINE_SEX(
-        samplesheet_ch.unknown
+    NGSBITS_SAMPLEGENDER(
+        samplesheet_ch.unknown,
+        ch_fasta,
+        ch_fai,
+        params.samplegender_method ?: 'xy'
     )
-    ch_versions = ch_versions.mix(DETERMINE_SEX.out.versions)
+    ch_versions = ch_versions.mix(NGSBITS_SAMPLEGENDER.out.versions)
 
     samplesheet_ch.unknown
-        .join(DETERMINE_SEX.out.output)
+        .join(NGSBITS_SAMPLEGENDER.out.sex)
         .map{ meta, bam, bai, sex ->
             def newMeta = meta.clone()
             newMeta.remove('sex')

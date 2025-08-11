@@ -55,6 +55,13 @@
                     "help_text": "Should be Stranger's extended JSON as described at https://github.com/Clinical-Genomics/stranger/blob/master/stranger/resources/variant_catalog_grch37.json. This file is used by both ExpansionHunter and Stranger",
                     "fa_icon": "fas fa-file"
                 },
+                "ngsbits_samplegender_method": {
+                    "type": "string",
+                    "default": "xy",
+                    "description": "Method selection for ngs-bits samplegender",
+                    "fa_icon": "fas fa-align-center",
+                    "enum": ["xy", "hetx", "sry"]
+                },
                 "multiqc_title": {
                     "type": "string",
                     "description": "MultiQC report title. Printed as page header, used for filename if not otherwise specified.",

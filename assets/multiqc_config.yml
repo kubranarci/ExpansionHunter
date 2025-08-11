@@ -11,4 +11,15 @@ report_section_order:
 
 export_plots: true
 
+run_modules:
+  - picard
+  - ngsbits
+  - custom_content
+
+module_order:
+  - picard:
+      name: "Picard"
+  - ngsbits:
+      name: "ngsbits"
+
 disable_version_detection: true

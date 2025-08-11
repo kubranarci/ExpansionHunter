@@ -14,6 +14,8 @@
 - [ExpansionHunter](https://academic.oup.com/bioinformatics/article/doi/10.1093/bioinformatics/btz431/5499079)
 
   > Dolzhenko E, Deshpande V, Schlesinger F, et al. ExpansionHunter: a sequence-graph-based tool to analyze variation in short tandem repeat regions. Birol I, ed. Bioinformatics. 2019;35(22):4754-4756. doi:10.1093/bioinformatics/btz431
+  
+- [ngs-bits-samplegender](https://github.com/imgag/ngs-bits/tree/master)
 
 - [MultiQC](https://pubmed.ncbi.nlm.nih.gov/27312411/)
 

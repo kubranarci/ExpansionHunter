@@ -30,12 +30,12 @@
             "sex": {
                 "oneOf": [
                     {
-                        "type": "integer",
-                        "enum": [0, 1, 2]
+                        "type": "string",
+                        "enum": ["female", "male", "unknown"]
                     }
                 ],
                 "meta": ["sex"],
-                "errorMessage": "Sex must be provided, has to be one of this values: '0: unknown, 1: male, 2: female' and cannot contain spaces"
+                "errorMessage": "Sex must be provided, has to be one of this values: 'unknown, male, female' and cannot contain spaces"
             },
             "phenotype": {
                 "type": "string",
